@@ -56,6 +56,12 @@ static int evport_debug = 0;
  * it must happen by the time aeApiPoll is called again.  Our solution is to
  * keep track of the last fds returned by aeApiPoll and re-associate them next
  * time aeApiPoll is invoked.
+ * 这个实现有一个小技巧，当我们通过aeApiPoll返回事件时，相应的文件描述符与port
+ * 取消关联。这是必要的，因为poll事件是电平触发，所以如果fd不与port取消关联，
+ * 就会立马生成另一个事件，因为底层的电平状态未变化。我们必须重新关联文件描述符，
+ * 但是只是在我们知道调用程序真正读取之后。这个eaAPI不会确切的告诉我们什么时候发生，
+ * 但是我们知道当aeApiPoll再次被调用时发生了。我们的解决方案是跟踪aeApiPoll调用port_getn
+ * 返回的需要处理的fds并在下一次调用aeApiPoll时重新绑定
  *
  * To summarize, in this module, each fd association is EITHER (a) represented
  * only via the in-kernel association OR (b) represented by pending_fds and
@@ -67,9 +73,9 @@ static int evport_debug = 0;
 
 typedef struct aeApiState {
     int     portfd;                             /* event port */
-    int     npending;                           /* # of pending fds */
-    int     pending_fds[MAX_EVENT_BATCHSZ];     /* pending fds */
-    int     pending_masks[MAX_EVENT_BATCHSZ];   /* pending fds' masks */
+    int     npending;                           /* # of pending fds *//*pending_fds的有效个数*/
+    int     pending_fds[MAX_EVENT_BATCHSZ];     /* pending fds *//*保存需要重新绑定的fd*/
+    int     pending_masks[MAX_EVENT_BATCHSZ];   /* pending fds' masks *//*保存需要重新绑定的fd的mask*/
 } aeApiState;
 
 static int aeApiCreate(aeEventLoop *eventLoop) {
@@ -170,6 +176,9 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
          * assume that the consumer has processed that poll event, but we play
          * it safer by simply updating pending_mask.  The fd will be
          * re-associated as usual when aeApiPoll is called again.
+         * 这个fd是最近从aeApiPoll返回的。认为用户已经处理了这个poll事件，这个合理的，
+         * 但是更安全的做法是升级pending_mask。在调用aeApiPoll时，fd会被重新关联
+         * 用户关注的fd包括保存在pending_fd中的和保存在portfd中的
          */
         if (evport_debug)
             fprintf(stderr, "aeApiAddEvent: adding to pending fd %d\n", fd);
@@ -197,6 +206,7 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
          * This fd was just returned from aeApiPoll, so it's not currently
          * associated with the port.  All we need to do is update
          * pending_mask appropriately.
+         * fd刚刚从aApiPoll中返回，所以它当前还未与port关联
          */
         state->pending_masks[pfd] &= ~mask;
 
@@ -213,7 +223,7 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
      * events are without looking into the eventLoop state directly.  We rely on
      * the fact that our caller has already updated the mask in the eventLoop.
      */
-
+     /*fd当前与port关联，根据eventLoop->events[fd].mask在判断是删除fd还是重新关联fd*/
     fullmask = eventLoop->events[fd].mask;
     if (fullmask == AE_NONE) {
         /*

@@ -35,6 +35,7 @@
 
 typedef struct aeApiState {
     int kqfd;
+    /*保存返回的就绪事件*/
     struct kevent *events;
 } aeApiState;
 

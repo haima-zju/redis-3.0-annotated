@@ -1859,7 +1859,8 @@ void initServerConfig() {
     // 在这里初始化是因为接下来读取 .conf 文件时可能会用到这些命令
     server.commands = dictCreate(&commandTableDictType,NULL);
     server.orig_commands = dictCreate(&commandTableDictType,NULL);
-    populateCommandTable();
+    
+    ();
     server.delCommand = lookupCommandByCString("del");
     server.multiCommand = lookupCommandByCString("multi");
     server.lpushCommand = lookupCommandByCString("lpush");

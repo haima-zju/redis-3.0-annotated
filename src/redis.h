@@ -1048,9 +1048,10 @@ struct redisServer {
 
     // AOF 文件的当前字节大小
     off_t aof_current_size;         /* AOF current size. */
+    //设置为1表示有aof rewrite的延迟
     int aof_rewrite_scheduled;      /* Rewrite once BGSAVE terminates. */
 
-    // 负责进行 AOF 重写的子进程 ID
+    // 负责进行 AOF 重写的子进程 ID，也用于判断是否正在进行aof rewrite
     pid_t aof_child_pid;            /* PID if rewriting process */
 
     // AOF 重写缓存链表，链接着多个缓存块

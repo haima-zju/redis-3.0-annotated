@@ -39,7 +39,7 @@ typedef struct aeApiState {
     // epoll_event 实例描述符
     int epfd;
 
-    // 事件槽
+    // 事件槽，保存放回的就绪事件
     struct epoll_event *events;
 
 } aeApiState;

@@ -90,7 +90,7 @@ int anetNonBlock(char *err, int fd)
 int anetKeepAlive(char *err, int fd, int interval)
 {
     int val = 1;
-
+    //打开keep alive选项
     if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val)) == -1)
     {
         anetSetError(err, "setsockopt SO_KEEPALIVE: %s", strerror(errno));
@@ -103,6 +103,7 @@ int anetKeepAlive(char *err, int fd, int interval)
      * actually useful. */
 
     /* Send first probe after interval. */
+     //设置发送首次keep alive探测前经历的时间值
     val = interval;
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &val, sizeof(val)) < 0) {
         anetSetError(err, "setsockopt TCP_KEEPIDLE: %s\n", strerror(errno));
@@ -112,6 +113,7 @@ int anetKeepAlive(char *err, int fd, int interval)
     /* Send next probes after the specified interval. Note that we set the
      * delay as interval / 3, as we send three probes before detecting
      * an error (see the next setsockopt call). */
+     //设置两次探测之间的时间间隔
     val = interval/3;
     if (val == 0) val = 1;
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &val, sizeof(val)) < 0) {
@@ -121,6 +123,7 @@ int anetKeepAlive(char *err, int fd, int interval)
 
     /* Consider the socket in error state after three we send three ACK
      * probes without getting a reply. */
+    //设置返回错误前，需要进行三次keep alive探测
     val = 3;
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &val, sizeof(val)) < 0) {
         anetSetError(err, "setsockopt TCP_KEEPCNT: %s\n", strerror(errno));
@@ -452,6 +455,7 @@ static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len, int 
 
 static int anetV6Only(char *err, int s) {
     int yes = 1;
+    /*设置socketfd接收IPv6地址*/
     if (setsockopt(s,IPPROTO_IPV6,IPV6_V6ONLY,&yes,sizeof(yes)) == -1) {
         anetSetError(err, "setsockopt: %s", strerror(errno));
         close(s);
@@ -479,7 +483,7 @@ static int _anetTcpServer(char *err, int port, char *bindaddr, int af, int backl
     for (p = servinfo; p != NULL; p = p->ai_next) {
         if ((s = socket(p->ai_family,p->ai_socktype,p->ai_protocol)) == -1)
             continue;
-
+        //只接受IPV6的IP地址
         if (af == AF_INET6 && anetV6Only(err,s) == ANET_ERR) goto error;
         if (anetSetReuseAddr(err,s) == ANET_ERR) goto error;
         if (anetListen(err,s,p->ai_addr,p->ai_addrlen,backlog) == ANET_ERR) goto error;

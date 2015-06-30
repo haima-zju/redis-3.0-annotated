@@ -181,6 +181,8 @@ void bioInit(void) {
 
 /*
  * 创建后台任务
+ * type表示操作码，要么是REDIS_BIO_CLOSE_FILE，要么是REDIS_BIO_AOF_FSYNC
+ * arg1表示文件描述符
  */
 void bioCreateBackgroundJob(int type, void *arg1, void *arg2, void *arg3) {
     struct bio_job *job = zmalloc(sizeof(*job));

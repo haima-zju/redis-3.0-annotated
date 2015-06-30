@@ -815,6 +815,9 @@ static int zslParseRange(robj *min, robj *max, zrangespec *spec) {
     return REDIS_OK;
 }
 
+
+
+
 /* ------------------------ Lexicographic ranges ---------------------------- */
 
 /* Parse max or min argument of ZRANGEBYLEX.
@@ -979,6 +982,10 @@ zskiplistNode *zslLastInLexRange(zskiplist *zsl, zlexrangespec *range) {
     if (!zslLexValueGteMin(x->obj,range)) return NULL;
     return x;
 }
+
+
+
+
 
 /*-----------------------------------------------------------------------------
  * Ziplist-backed sorted set API

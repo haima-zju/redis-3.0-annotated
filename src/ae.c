@@ -506,6 +506,8 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
      * file events to process as long as we want to process time
      * events, in order to sleep until the next time event is ready
      * to fire. */
+     //有关注的文件时间或者有要处理时间时间且可以等待
+     //运行到这里后，只要有关注的文件事件并且（可能等待一定时间）发生触发，则一定会处理该事件
     if (eventLoop->maxfd != -1 ||
         ((flags & AE_TIME_EVENTS) && !(flags & AE_DONT_WAIT))) {
         int j;
@@ -539,7 +541,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
             if (tvp->tv_usec < 0) tvp->tv_usec = 0;
         } else {
             
-            // 执行到这一步，说明没有时间事件
+            // 执行到这一步，说明没有时间事件或者存在不等待标志位
             // 那么根据 AE_DONT_WAIT 是否设置来决定是否阻塞，以及阻塞的时间长度
 
             /* If we have to check for events but need to return

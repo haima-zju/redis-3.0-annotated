@@ -44,12 +44,12 @@ void zlibc_free(void *ptr) {
 #include "config.h"
 #include "zmalloc.h"
 
-#ifdef HAVE_MALLOC_SIZE
+#ifdef HAVE_MALLOC_SIZE //tc_malloc,je_malloc,Mac平台
 #define PREFIX_SIZE (0)
 #else
 #if defined(__sun) || defined(__sparc) || defined(__sparc__)
 #define PREFIX_SIZE (sizeof(long long))
-#else
+#else                   //linux
 #define PREFIX_SIZE (sizeof(size_t))
 #endif
 #endif
@@ -67,6 +67,7 @@ void zlibc_free(void *ptr) {
 #define free(ptr) je_free(ptr)
 #endif
 
+//原子操作修改总共使用内存
 #ifdef HAVE_ATOMIC
 #define update_zmalloc_stat_add(__n) __sync_add_and_fetch(&used_memory, (__n))
 #define update_zmalloc_stat_sub(__n) __sync_sub_and_fetch(&used_memory, (__n))
@@ -85,6 +86,7 @@ void zlibc_free(void *ptr) {
 
 #endif
 
+//long型对齐，分配后更新used_memory的值
 #define update_zmalloc_stat_alloc(__n) do { \
     size_t _n = (__n); \
     if (_n&(sizeof(long)-1)) _n += sizeof(long)-(_n&(sizeof(long)-1)); \
@@ -94,7 +96,7 @@ void zlibc_free(void *ptr) {
         used_memory += _n; \
     } \
 } while(0)
-
+//long型对齐，释放前更新used_memory的值
 #define update_zmalloc_stat_free(__n) do { \
     size_t _n = (__n); \
     if (_n&(sizeof(long)-1)) _n += sizeof(long)-(_n&(sizeof(long)-1)); \
@@ -106,7 +108,7 @@ void zlibc_free(void *ptr) {
 } while(0)
 
 static size_t used_memory = 0;
-static int zmalloc_thread_safe = 0;
+static int zmalloc_thread_safe = 0; //默认是不启动线程安全
 pthread_mutex_t used_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void zmalloc_default_oom(size_t size) {
@@ -258,7 +260,9 @@ void zmalloc_set_oom_handler(void (*oom_handler)(size_t)) {
 #include <sys/stat.h>
 #include <fcntl.h>
 
+//获取当前进程的驻留集大小
 size_t zmalloc_get_rss(void) {
+    //获取page页大小
     int page = sysconf(_SC_PAGESIZE);
     size_t rss;
     char buf[4096];
@@ -298,6 +302,7 @@ size_t zmalloc_get_rss(void) {
 #include <mach/task.h>
 #include <mach/mach_init.h>
 
+
 size_t zmalloc_get_rss(void) {
     task_t task = MACH_PORT_NULL;
     struct task_basic_info t_info;
@@ -321,11 +326,17 @@ size_t zmalloc_get_rss(void) {
 #endif
 
 /* Fragmentation = RSS / allocated-bytes */
+//计算碎片率
 float zmalloc_get_fragmentation_ratio(size_t rss) {
     return (float)rss/zmalloc_used_memory();
 }
 
 #if defined(HAVE_PROC_SMAPS)
+//获取Private_Dirty大小，RSS=Shared_Clean+Shared_Dirty+Private_Clean+Private_Dirty
+//Shared_Clean：引用大于1，未被修改
+//Shared_Dirty：引用大于1，被修改
+//Private_Clean：引用等于1，未被修改
+//Private_Dirty：引用等于1，被修改
 size_t zmalloc_get_private_dirty(void) {
     char line[1024];
     size_t pd = 0;
