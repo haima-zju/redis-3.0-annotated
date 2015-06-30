@@ -476,6 +476,7 @@ static int _anetTcpServer(char *err, int port, char *bindaddr, int af, int backl
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;    /* No effect if bindaddr != NULL */
 
+    //默认返回ip地址为全0即INADDR_ANY
     if ((rv = getaddrinfo(bindaddr,_port,&hints,&servinfo)) != 0) {
         anetSetError(err, "%s", gai_strerror(rv));
         return ANET_ERR;
